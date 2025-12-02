@@ -1,0 +1,193 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  name          String    @db.Text
+  email         String
+  emailVerified Boolean   @default(false) @map("email_verified")
+  image         String?   @db.Text
+  sessions      Session[]
+  accounts      Account[]
+  role          Role      @default(USER)
+  orders        Order[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([email])
+  @@map("users")
+}
+
+model Session {
+  id        Int      @id @default(autoincrement())
+  expiresAt DateTime @map("expires_at")
+  token     String
+  ipAddress String?  @map("ip_address") @db.Text
+  userAgent String?  @map("user_agent") @db.Text
+  userId    Int      @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([token])
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id                    Int       @id @default(autoincrement())
+  accountId             String    @map("account_id") @db.Text
+  providerId            String    @map("provider_id") @db.Text
+  userId                Int       @map("user_id")
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?   @map("access_token") @db.Text
+  refreshToken          String?   @map("refresh_token") @db.Text
+  idToken               String?   @map("id_token") @db.Text
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                 String?   @db.Text
+  password              String?   @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         Int      @id @default(autoincrement())
+  identifier String   @map("identifier") @db.Text
+  value      String   @db.Text
+  expiresAt  DateTime @map("expires_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([identifier(length: 191)])
+  @@map("verifications")
+}
+
+model Product {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String  @db.Text
+  price       Float
+  image       String?
+  rating      Float   @default(0)
+  stock       Int     @default(0)
+
+  categoryId Int?        @map("category_id")
+  category   Category?   @relation("CategoryProducts", fields: [categoryId], references: [id])
+  orderItems OrderItem[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("products")
+}
+
+model Category {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String? @db.Text
+  icon        String?
+  color       String?
+
+  products Product[] @relation("CategoryProducts")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("categories")
+}
+
+model Order {
+  id            Int           @id @default(autoincrement())
+  orderStatus   OrderStatus   @default(PENDING) @map("order_status")
+  paymentMethod PaymentMethod @default(KHQR) @map("payment_method")
+  shippingFee   Decimal       @map("shipping_fee") @db.Decimal(10, 2)
+  total         Decimal       @db.Decimal(10, 2)
+  tax           Decimal       @db.Decimal(10, 2)
+
+  userId Int  @map("user_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  shippingAddressId Int?             @map("shipping_address_id")
+  shippingAddress   ShippingAddress? @relation(fields: [shippingAddressId], references: [id])
+
+  orderItems OrderItem[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id       Int @id @default(autoincrement())
+  quantity Int
+
+  orderId Int   @map("order_id")
+  order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId Int     @map("product_id")
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("order_items")
+}
+
+model ShippingAddress {
+  id          Int    @id @default(autoincrement())
+  firstName   String @map("first_name")
+  lastName    String @map("last_name")
+  phoneNumber String @map("phone_number")
+
+  address String
+  city    String
+  state   String
+  zipCode String @map("zip_code")
+  country String
+
+  orders Order[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("shipping_addresses")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  COD
+  KHQR
+}

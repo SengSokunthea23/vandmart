@@ -1,0 +1,13 @@
+services:
+  mysql:
+    image: mysql:latest
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: shopmart_development
+      MYSQL_USER: kunthea
+      MYSQL_PASSWORD: soksan
+
+volumes:
+  mysql-data:
